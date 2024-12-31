@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class AppConfig {
     
-    @Value("${app.file.pdfFilePath}")
-    private String pdfFilePath;
+    @Value("${app.file.pdfFolderPath}")
+    private String pdfFolderPath;
     
 }

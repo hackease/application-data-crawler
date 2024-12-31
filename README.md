@@ -2,12 +2,12 @@
 
 ## Description
 
-The **Data Crawler Application** is a web crawler designed to extract student result data from a website. It logs into the system using a combination of a student's **Registration Number** and **Date of Birth (DOB)**, navigating through the website to retrieve the **Result Dashboard** from the next webpage.
+The **Data Crawler Application** is a web crawler designed to extract student result data from a website. It logs into the system using a combination of a student's **Roll Number** and **Date of Birth (DOB)**, navigating through the website to retrieve the **Result Dashboard** and **Score Card** from the next webpage.
 
-This application employs a **brute-force approach**, systematically testing all possible combinations of registration numbers with DOBs within a valid range.
+This application employs a **brute-force approach**, systematically testing all possible combinations of Roll Numbers with DOBs within a valid range.
 
-- If a valid Registration Number and DOB pair is found, the application fetches the result data and stores it in the database.
-- If no match is found, the application records `"Not in range"` in the DOB field of the database for the given Registration Number.
+- If a valid Roll Number and DOB pair is found, the application fetches the result data and stores it in the database.
+- If no match is found, the application records `"Not in range"` in the DOB field of the database for the given Roll Number.
 
 ## Technologies Used
 

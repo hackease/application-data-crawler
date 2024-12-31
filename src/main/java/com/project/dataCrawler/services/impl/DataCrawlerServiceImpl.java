@@ -1,174 +1,163 @@
 package com.project.dataCrawler.services.impl;
 
-import com.project.dataCrawler.domain.dtos.UserDetailsDto;
-import com.project.dataCrawler.domain.entities.UserDetailsEntity;
-import com.project.dataCrawler.mappers.UserDetailsMapper;
-import com.project.dataCrawler.repositories.UserDetailsRepository;
+import com.project.dataCrawler.domain.dtos.StudentDataDto;
+import com.project.dataCrawler.domain.entities.StudentDataEntity;
+import com.project.dataCrawler.mappers.StudentDataMapper;
+import com.project.dataCrawler.repositories.StudentDataRepository;
 import com.project.dataCrawler.services.DataCrawlerService;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
 @Service
 public class DataCrawlerServiceImpl implements DataCrawlerService {
     
-    private static final String URL = "https://www.example.com/Login";
+    private static final String URL = "https://www.example.com";
     
     @Autowired
-    private UserDetailsRepository userDetailsRepository;
+    private StudentDataRepository studentDataRepository;
     
     @Autowired
-    private UserDetailsMapper userDetailsMapper;
+    private StudentDataMapper studentDataMapper;
     
     @Override
-    public ResponseEntity<UserDetailsDto> fetchAndSaveDetails(String regNo, String dob) {
-        
-        UserDetailsDto result = new UserDetailsDto();
+    public ResponseEntity<StudentDataDto> fetchAndSaveData(String rollNo, String dob) {
         
         try {
             // Establish a connection and fetch the GET response
-            Connection.Response getResponse = Jsoup.connect(URL)
-                                                      .method(Connection.Method.GET)
-                                                      .execute();
+            Connection.Response getStudentLogin = Jsoup.connect(URL+"/Login")
+                                                          .method(Connection.Method.GET)
+                                                          .execute();
             
             // Extract cookies from the response
-            Map<String, String> cookies = getResponse.cookies();
+            Map<String, String> cookies = getStudentLogin.cookies();
             
             // Fetch the get webpage
-            Document getDocument = getResponse.parse();
+            Document getStudentLoginDocument = getStudentLogin.parse();
             
             // Locate the input element of __RequestVerificationToken
-            Element inputElement = getDocument.selectFirst("input[name=__RequestVerificationToken]");
+            Element requestVerificationTokenInputElement = getStudentLoginDocument.selectFirst("input[name=__RequestVerificationToken]");
             
             // Extract the __RequestVerificationToken of the form
-            String requestVerificationToken = inputElement != null ? inputElement.attr("value") : "";
+            String requestVerificationToken = requestVerificationTokenInputElement != null ? requestVerificationTokenInputElement.attr("value") : "";
             
             // URL-encoded key-value pairs
             Map<String, String> formData = new HashMap<>();
             formData.put("__RequestVerificationToken", requestVerificationToken);
-            formData.put("RegNo", regNo);
+            formData.put("RegNo", rollNo);
             formData.put("DOB", dob);
             
             // Submit the form with the required data and fetch the POST response
-            Connection.Response postResponse = Jsoup.connect(URL)
-                                                       .cookies(cookies)
-                                                       .data(formData)
-                                                       .method(Connection.Method.POST)
-                                                       .execute();
+            Connection.Response postRollNoLogin = Jsoup.connect(URL+"/Login/RollNoLogin")
+                                                          .cookies(cookies)
+                                                          .data(formData)
+                                                          .method(Connection.Method.POST)
+                                                          .execute();
             
             // Fetch the post Webpage
-            Document postDocument = postResponse.parse();
+            Document dashboardDocument = postRollNoLogin.parse();
             
-            // Extract required fields and store in details
-            Map<String, String> details = extractDetails(postDocument);
+            Element dashboardElement = dashboardDocument.selectFirst("h3:containsOwn(DASHBOARD)");
+            Element invalidLoginElement = dashboardDocument.selectFirst("strong:containsOwn(Invalid Login Credentials!)");
             
-            UserDetailsEntity userDetails = new UserDetailsEntity();
+            StudentDataEntity studentData = new StudentDataEntity();
             
-            // Check if RegNo and DOB matches with details fields
-            if (details.get("Reg No").equals(regNo) && details.get("DOB").equals(dob)) {
-                
-                // Save details into the database
-                userDetails.setRegNo(regNo);
-                userDetails.setDob(dob);
-                userDetails.setFullName(details.get("Full Name"));
-                userDetails.setMobileNo(details.get("Mobile No"));
-                userDetails.setEmailId(details.get("Email ID"));
-                userDetails.setStandard(details.get("Standard"));
-                userDetails.setGender(details.get("Gender"));
-                userDetails.setSchool(details.get("School"));
-                userDetails.setRegion(details.get("Region"));
-                userDetails.setScore(details.get("Tentative Score"));
-                
-                result = userDetailsMapper.toDto(userDetailsRepository.save(userDetails));
-            } else {
-                if (dob.equals("31/07/2012")) {
-                    // Save RegNo into the database
-                    userDetails.setRegNo(regNo);
+            if (dashboardElement == null && invalidLoginElement != null) {
+                if (dob.equals("31/12/2011")) {
+                    // Save RollNo into the database
+                    studentData.setRollNo(rollNo);
                     // Set DOB to "Not in range" into the database
-                    userDetails.setDob("Not in range");
+                    studentData.setDob("Not in range");
                     
-                    result = userDetailsMapper.toDto(userDetailsRepository.save(userDetails));
+                    studentDataRepository.save(studentData);
                 }
-            }
-            
-            if (result.getId() != null && !result.getDob().equals("Not in range"))
-                return new ResponseEntity<>(result, HttpStatus.CREATED);
-            else
+                
                 return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-            
+            } else {
+                // Fetch all label elements from the Internal Dashboard Webpage
+                Elements dashboardLabelElements = dashboardDocument.select("label");
+                
+                // Save Internal Dashboard data into the database
+                studentData.setRollNo(rollNo);
+                studentData.setEnrollmentNo(dashboardLabelElements.get(1).text());
+                studentData.setDob(dob);
+                studentData.setName(dashboardLabelElements.get(5).text());
+                studentData.setMobileNo(dashboardLabelElements.get(8).text());
+                studentData.setEmailId(dashboardLabelElements.get(10).text());
+                
+                // Fetch the GET response for the Score-card
+                Connection.Response getScoreCard = Jsoup.connect(URL+"/Application/ScoreCard")
+                                                           .cookies(cookies)
+                                                           .method(Connection.Method.GET)
+                                                           .execute();
+                
+                // Fetch the Scorecard Webpage
+                Document scoreCardDocument = getScoreCard.parse();
+                
+                // Fetch all label elements from the ScoreCard Webpage
+                Elements scoreCardH4LabelElements = scoreCardDocument.select("h4");
+                Elements scoreCardH5LabelElements = scoreCardDocument.select("h5");
+                
+                int[] h4Index = {4, 6, 8, 14};
+                String[] h4Fields = new String[4];
+                
+                for (int i=0; i<h4Index.length; i++) {
+                    Element nextLabelElement = scoreCardH4LabelElements.get(h4Index[i]).selectFirst("label");
+                    
+                    if (nextLabelElement != null) h4Fields[i] = nextLabelElement.text();
+                    else h4Fields[i] = null;
+                }
+                
+                String[] h5Fields = new String[8];
+                
+                for (int i=0; i<h5Fields.length; i++) {
+                    Element nextLabelElement = scoreCardH5LabelElements.get(i).selectFirst("label");
+                    
+                    if (nextLabelElement != null) h5Fields[i] = nextLabelElement.text();
+                    else h5Fields[i] = null;
+                }
+                
+                // Save Score Card data into the database
+                studentData.setFatherMother(h4Fields[0]);
+                studentData.setGender(h4Fields[1]);
+                studentData.setStandard(h4Fields[2]);
+                studentData.setCentre(h4Fields[3].replaceFirst(": ", ""));
+                
+                // Save Score data into the database
+                studentData.setAstronomySubject(h5Fields[0]);
+                studentData.setBiologySubject(h5Fields[1]);
+                studentData.setChemistrySubject(h5Fields[2]);
+                studentData.setPhysicsSubject(h5Fields[3]);
+                studentData.setAstronomyScore(h5Fields[4]);
+                studentData.setBiologyScore(h5Fields[5]);
+                studentData.setChemistryScore(h5Fields[6]);
+                studentData.setPhysicsScore(h5Fields[7]);
+                
+                return new ResponseEntity<>(
+                        studentDataMapper.toDto(studentDataRepository.save(studentData)),
+                        HttpStatus.CREATED
+                );
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
     
     @Override
-    public boolean checkIfRegNoExists(String regNo) {
-        return userDetailsRepository.existsByRegNo(regNo);
-    }
-    
-    private static Map<String, String> extractDetails(Document document) {
-        Map<String, String> detailsMap = getFieldMap();
-        Map<String, String> resultMap = new HashMap<>();
-        
-        detailsMap.forEach((key, value) -> {
-            String temp = "";
-            Element labelElement = document.selectFirst("label:containsOwn("+value+")");
-            if (labelElement != null) {
-                Element nextSibling = labelElement.nextElementSibling();
-                if (nextSibling != null) {
-                    if (value.equals("Mobile No :")) {
-                        nextSibling = nextSibling.nextElementSibling();
-                        if (nextSibling != null) temp = nextSibling.text();
-                    } else {
-                        temp = nextSibling.text();
-                    }
-                }
-            }
-            if (key.equals("First Name") || key.equals("Middle Name") || key.equals("Last Name")) {
-                detailsMap.put(key, temp);
-            } else {
-                resultMap.put(key, temp);
-            }
-        });
-        
-        String fullName = String.format(
-                "%s %s %s",
-                detailsMap.get("First Name"),
-                detailsMap.get("Middle Name"),
-                detailsMap.get("Last Name")
-        ).trim().replaceAll("\\s+", " ");
-        
-        resultMap.put("Full Name", fullName);
-        
-        return resultMap;
-    }
-    
-    private static Map<String, String> getFieldMap() {
-        Map<String, String> fieldMap = new HashMap<>();
-        fieldMap.put("Reg No", "Registration No :");
-        fieldMap.put("DOB", "Date Of Birth :");
-        fieldMap.put("First Name", "First Name :");
-        fieldMap.put("Middle Name", "Middle Name :");
-        fieldMap.put("Last Name", "Last Name :");
-        fieldMap.put("Mobile No", "Mobile No :");
-        fieldMap.put("Email ID", "Email Id :");
-        fieldMap.put("Standard", "Class/Standard :");
-        fieldMap.put("Gender", "Gender :");
-        fieldMap.put("School", "School studying in :");
-        fieldMap.put("Region", "Region :");
-        fieldMap.put("Tentative Score", "Tentative Score :");
-        
-        return fieldMap;
+    public List<String> getAllRollNo() {
+        return studentDataRepository.getAllRollNo();
     }
     
 }

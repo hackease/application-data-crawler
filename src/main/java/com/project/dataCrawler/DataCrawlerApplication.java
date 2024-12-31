@@ -15,7 +15,7 @@ public class DataCrawlerApplication {
         ApplicationStarter applicationStarter = context.getBean(ApplicationStarter.class);
         
         try {
-            // Populate data (RegNo & DOB)
+            // Populate data (RollNo & DOB)
             applicationStarter.populateData();
             
             // Execute threads

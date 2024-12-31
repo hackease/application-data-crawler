@@ -1,14 +1,16 @@
 package com.project.dataCrawler.services;
 
-import com.project.dataCrawler.domain.dtos.UserDetailsDto;
+import com.project.dataCrawler.domain.dtos.StudentDataDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public interface DataCrawlerService {
     
-    ResponseEntity<UserDetailsDto> fetchAndSaveDetails(String regNo, String dob);
+    ResponseEntity<StudentDataDto> fetchAndSaveData(String rollNo, String dob);
     
-    boolean checkIfRegNoExists(String regNo);
+    List<String> getAllRollNo();
     
 }
