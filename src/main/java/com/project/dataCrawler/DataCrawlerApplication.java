@@ -1,19 +1,23 @@
 package com.project.dataCrawler;
 
 import com.project.dataCrawler.config.ApplicationStarter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
 
 @SpringBootApplication
-public class DataCrawlerApplication {
+public class DataCrawlerApplication implements CommandLineRunner {
+    
+    @Autowired
+    private ApplicationStarter applicationStarter;
     
     public static void main(String[] args) {
-        ApplicationContext context = SpringApplication.run(DataCrawlerApplication.class, args);
-        
-        // Start the Application
-        ApplicationStarter applicationStarter = context.getBean(ApplicationStarter.class);
-        
+        SpringApplication.run(DataCrawlerApplication.class, args);
+	}
+    
+    @Override
+    public void run(String... args) {
         try {
             // Populate data (RollNo & DOB)
             applicationStarter.populateData();
@@ -23,8 +27,6 @@ public class DataCrawlerApplication {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        
-        
-	}
- 
+    }
+    
 }

@@ -86,7 +86,7 @@ public class ApplicationStarter {
             result.addAll(
                     Arrays.stream(pdfText.split("\n"))
                             .map(line -> line.split("\\s+"))                 // Split each line into words
-                            .filter(words -> words.length > 1)                     // Ensure line has enough words
+                            .filter(words -> words.length > 0)                     // Ensure line has enough words
                             .flatMap(words -> Arrays.stream(words)                 // Flatten the words stream
                                                       .filter(word -> word.matches("[A-Z]{2}[0-9]{9}")) // Filter words by the pattern
                             ).toList()                                             // Collect into a list
